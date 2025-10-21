@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
 import { AuthResponse, ConnectionStatus, KlineData, KlineResponse, PingMessage, PongMessage, QuoteData, QuoteResponse, SubscribeMessage, SubscribeResponse, WebSocketMessage } from '../types/itick';
+import { LarkNotifier } from '../utils/LarkNotifier';
 import { Logger } from '../utils/Logger';
 
 /**
@@ -19,12 +20,14 @@ export class ItickWebSocketClient extends EventEmitter {
 	private reconnectDelay = 1000; // 1秒
 	private heartbeatDelay = 60000; // 60秒 (1分钟)
 	private logger: Logger;
+	private larkNotifier: LarkNotifier;
 
 	constructor(token: string, url: string = 'wss://api.itick.org/forex') {
 		super();
 		this.token = token;
 		this.url = url;
 		this.logger = new Logger('ItickWebSocketClient');
+		this.larkNotifier = new LarkNotifier();
 	}
 
 	/**
@@ -61,9 +64,13 @@ export class ItickWebSocketClient extends EventEmitter {
 				});
 
 				// 连接错误
-				this.ws.on('error', (error: Error) => {
+				this.ws.on('error', async (error: Error) => {
 					this.logger.error('WebSocket 连接错误', error);
 					this.status = ConnectionStatus.ERROR;
+					
+					// 发送 Lark 通知
+					await this.larkNotifier.sendConnectionErrorNotification(error, this.reconnectAttempts);
+					
 					reject(error);
 				});
 
@@ -192,7 +199,11 @@ export class ItickWebSocketClient extends EventEmitter {
 	 * 处理心跳响应
 	 */
 	private handlePongResponse(response: PongMessage): void {
-		this.logger.debug('收到心跳响应', { params: response.data.params });
+		if (response.data && response.data.params) {
+			this.logger.debug('收到心跳响应', { params: response.data.params });
+		} else {
+			this.logger.debug('收到心跳响应');
+		}
 	}
 
 	/**
@@ -278,6 +289,10 @@ export class ItickWebSocketClient extends EventEmitter {
 				this.logger.info('重连成功');
 			} catch (error) {
 				this.logger.error('重连失败', { error, attempt: this.reconnectAttempts });
+				
+				// 发送 Lark 通知
+				await this.larkNotifier.sendReconnectFailureNotification(error, this.reconnectAttempts);
+				
 				if (this.reconnectAttempts < this.maxReconnectAttempts) {
 					this.scheduleReconnect();
 				} else {

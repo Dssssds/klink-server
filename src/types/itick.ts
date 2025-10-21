@@ -78,7 +78,7 @@ export interface PingMessage {
 // 心跳响应
 export interface PongMessage {
   resAc: "pong";
-  data: {
+  data?: {
     params: string;  // 时间戳
   };
 }
@@ -98,7 +98,7 @@ export type WebSocketMessage =
   | KlineResponse
   | QuoteResponse
   | PongMessage
-  | { resAc: "pong"; data: { params: string } };
+  | { resAc: "pong" };
 
 // 连接状态枚举
 export enum ConnectionStatus {

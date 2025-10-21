@@ -27,6 +27,9 @@ const CONFIG = {
 
 	// TSRPC 服务器端口
 	TSRPC_PORT: parseInt(process.env.TSRPC_PORT || '3000'),
+
+	// Lark 通知配置
+	LARK_WEBHOOK_URL: process.env.LARK_WEBHOOK_URL || '',
 };
 
 // 创建主日志记录器
