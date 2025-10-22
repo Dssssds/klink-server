@@ -55,12 +55,14 @@ export class ItickWebSocketClient extends EventEmitter {
 					const isReconnect = this.reconnectAttempts > 0;
 					this.logger.info('WebSocket 连接已建立', { isReconnect });
 					this.status = ConnectionStatus.CONNECTED;
-					
-					// 如果是重连，触发重连成功事件
+
+					// 如果是重连，触发重连成功事件并记录日志
 					if (isReconnect) {
+						const attemptNumber = this.reconnectAttempts;
+						this.logger.logReconnectEvent(attemptNumber, true);
 						super.emit('reconnected');
 					}
-					
+
 					this.reconnectAttempts = 0;
 					resolve();
 				});
@@ -260,7 +262,7 @@ export class ItickWebSocketClient extends EventEmitter {
 		// 设置心跳超时检测
 		this.heartbeatTimeout = setTimeout(async () => {
 			this.logger.error('心跳超时，连接可能已断开，主动关闭连接');
-			
+
 			// 发送 Lark 通知
 			await this.larkNotifier.sendHeartbeatTimeoutNotification();
 
@@ -316,10 +318,7 @@ export class ItickWebSocketClient extends EventEmitter {
 	private scheduleReconnect(): void {
 		this.reconnectAttempts++;
 		// 指数退避，但不超过最大延迟
-		const delay = Math.min(
-			this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
-			this.maxReconnectDelay
-		);
+		const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelay);
 
 		this.logger.info(`准备重连 (第 ${this.reconnectAttempts} 次尝试)`, {
 			delay,
@@ -336,6 +335,9 @@ export class ItickWebSocketClient extends EventEmitter {
 				await this.larkNotifier.sendReconnectSuccessNotification(currentAttempt);
 			} catch (error) {
 				this.logger.error('重连失败', { error, attempt: this.reconnectAttempts });
+
+				// 记录重连失败日志
+				this.logger.logReconnectEvent(this.reconnectAttempts, false, error);
 
 				// 发送 Lark 通知
 				await this.larkNotifier.sendReconnectFailureNotification(error, this.reconnectAttempts);
