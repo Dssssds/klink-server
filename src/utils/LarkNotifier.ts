@@ -41,6 +41,26 @@ export class LarkNotifier {
 	}
 
 	/**
+	 * 发送重连成功通知
+	 */
+	public async sendReconnectSuccessNotification(attempt: number): Promise<void> {
+		if (!this.enabled) return;
+
+		const message = this.createReconnectSuccessCard(attempt);
+		await this.sendMessage(message);
+	}
+
+	/**
+	 * 发送心跳超时通知
+	 */
+	public async sendHeartbeatTimeoutNotification(): Promise<void> {
+		if (!this.enabled) return;
+
+		const message = this.createHeartbeatTimeoutCard();
+		await this.sendMessage(message);
+	}
+
+	/**
 	 * 创建连接错误卡片
 	 */
 	private createConnectionErrorCard(error: any, attempt?: number): any {
@@ -88,17 +108,7 @@ export class LarkNotifier {
 					},
 					{
 						tag: 'action',
-						actions: [
-							{
-								tag: 'button',
-								text: {
-									content: '查看服务日志',
-									tag: 'plain_text',
-								},
-								type: 'primary',
-								url: 'https://github.com/your-repo/klink-server',
-							},
-						],
+						actions: [],
 					},
 				],
 			},
@@ -152,25 +162,113 @@ export class LarkNotifier {
 					},
 					{
 						tag: 'action',
-						actions: [
-							{
-								tag: 'button',
-								text: {
-									content: '重启服务',
-									tag: 'plain_text',
-								},
-								type: 'primary',
-								url: 'https://github.com/your-repo/klink-server',
-							},
-							{
-								tag: 'button',
-								text: {
-									content: '查看日志',
-									tag: 'plain_text',
-								},
-								url: 'https://github.com/your-repo/klink-server',
-							},
-						],
+						actions: [],
+					},
+				],
+			},
+		};
+	}
+
+	/**
+	 * 创建重连成功卡片
+	 */
+	private createReconnectSuccessCard(attempt: number): any {
+		const timestamp = new Date().toISOString();
+
+		return {
+			msg_type: 'interactive',
+			card: {
+				config: {
+					wide_screen_mode: true,
+				},
+				header: {
+					title: {
+						content: '✅ iTick WebSocket 重连成功',
+						tag: 'plain_text',
+					},
+					template: 'green',
+				},
+				elements: [
+					{
+						tag: 'div',
+						text: {
+							content: `**服务:** iTick K线订阅服务\n**时间:** ${timestamp}\n**事件:** 重连成功`,
+							tag: 'lark_md',
+						},
+					},
+					{
+						tag: 'hr',
+					},
+					{
+						tag: 'div',
+						text: {
+							content: `**🔄 重连信息:**\n• **重连次数:** 第 ${attempt} 次尝试\n• **连接状态:** 已恢复\n• **服务状态:** 正在重新订阅数据`,
+							tag: 'lark_md',
+						},
+					},
+					{
+						tag: 'div',
+						text: {
+							content: `**📊 状态信息:**\n• K线数据订阅恢复中\n• 实时数据接收即将恢复\n• 服务运行正常`,
+							tag: 'lark_md',
+						},
+					},
+					{
+						tag: 'action',
+						actions: [],
+					},
+				],
+			},
+		};
+	}
+
+	/**
+	 * 创建心跳超时卡片
+	 */
+	private createHeartbeatTimeoutCard(): any {
+		const timestamp = new Date().toISOString();
+
+		return {
+			msg_type: 'interactive',
+			card: {
+				config: {
+					wide_screen_mode: true,
+				},
+				header: {
+					title: {
+						content: '⏱️ iTick WebSocket 心跳超时',
+						tag: 'plain_text',
+					},
+					template: 'yellow',
+				},
+				elements: [
+					{
+						tag: 'div',
+						text: {
+							content: `**服务:** iTick K线订阅服务\n**时间:** ${timestamp}\n**事件:** 心跳超时`,
+							tag: 'lark_md',
+						},
+					},
+					{
+						tag: 'hr',
+					},
+					{
+						tag: 'div',
+						text: {
+							content: `**💓 心跳信息:**\n• **超时时长:** 10 秒\n• **检测结果:** 服务器无响应\n• **处理动作:** 主动断开连接`,
+							tag: 'lark_md',
+						},
+					},
+					{
+						tag: 'div',
+						text: {
+							content: `**🔄 后续处理:**\n• 连接已主动关闭\n• 将自动触发重连机制\n• 预计连接即将恢复`,
+							tag: 'lark_md',
+						},
+					},
+					{
+						tag: 'action',
+						actions: [],
 					},
 				],
 			},

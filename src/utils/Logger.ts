@@ -145,7 +145,7 @@ export class Logger {
   /**
    * 记录订阅事件
    */
-  public logSubscriptionEvent(action: 'subscribe' | 'unsubscribe', symbols: string[], success: boolean): void {
+  public logSubscriptionEvent(action: 'subscribe' | 'unsubscribe' | 'resubscribe', symbols: string[], success: boolean): void {
     const level = success ? 'info' : 'error';
     const message = success ? '订阅操作成功' : '订阅操作失败';
     

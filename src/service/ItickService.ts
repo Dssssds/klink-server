@@ -51,6 +51,28 @@ export class ItickService extends EventEmitter {
 			this.emit('subscribeFailed', response);
 		});
 
+		// 重连成功事件 - 自动重新订阅
+		this.client.on('reconnected', async () => {
+			this.logger.info('WebSocket 重连成功，等待认证后自动重新订阅');
+			
+			try {
+				// 等待认证完成
+				await this.waitForAuthentication();
+				
+				// 重新订阅之前的标的
+				if (this.subscribedSymbols.length > 0) {
+					this.client.subscribe(this.subscribedSymbols);
+					this.logger.info('重新订阅成功', { symbols: this.subscribedSymbols });
+					this.logger.logSubscriptionEvent('resubscribe', this.subscribedSymbols, true);
+				} else {
+					this.logger.warn('没有需要重新订阅的标的');
+				}
+			} catch (error) {
+				this.logger.error('重新订阅失败', error);
+				this.emit('resubscribeFailed', error);
+			}
+		});
+
 		// K线数据事件
 		this.client.on('klineData', (data: KlineData) => {
 			this.handleKlineData(data);
@@ -257,7 +279,6 @@ export class ItickService extends EventEmitter {
 		return this.isRunning;
 	}
 
-
 	/**
 	 * 清空数据缓冲区
 	 */
@@ -265,7 +286,6 @@ export class ItickService extends EventEmitter {
 		this.dataBuffer = [];
 		this.logger.info('数据缓冲区已清空');
 	}
-
 
 	/**
 	 * 获取指定时间范围内的K线数据
@@ -279,11 +299,11 @@ export class ItickService extends EventEmitter {
 	 */
 	public getLatestKlineData(symbol?: string, limit: number = 100): KlineData[] {
 		let filteredData = this.dataBuffer;
-		
+
 		if (symbol) {
 			filteredData = this.dataBuffer.filter((data) => data.s === symbol);
 		}
-		
+
 		// 返回最新的数据
 		return filteredData.slice(-limit);
 	}
@@ -293,11 +313,11 @@ export class ItickService extends EventEmitter {
 	 */
 	public getLatestQuoteData(symbol?: string, limit: number = 100): QuoteData[] {
 		let filteredData = this.quoteBuffer;
-		
+
 		if (symbol) {
 			filteredData = this.quoteBuffer.filter((data) => data.s === symbol);
 		}
-		
+
 		// 返回最新的数据
 		return filteredData.slice(-limit);
 	}
@@ -317,7 +337,6 @@ export class ItickService extends EventEmitter {
 
 			// 处理业务逻辑
 			this.processQuoteData(data);
-
 		} catch (error) {
 			this.logger.error('处理报价数据时发生错误', { error, data });
 		}
@@ -343,7 +362,7 @@ export class ItickService extends EventEmitter {
 	private processQuoteData(data: QuoteData): void {
 		// 这里可以添加具体的业务逻辑
 		// 例如：价格变化检测、趋势分析等
-		
+
 		const { s: symbol, ld: price, v: volume, t: timestamp } = data;
 
 		// 简单的价格变化检测
@@ -353,21 +372,22 @@ export class ItickService extends EventEmitter {
 				const priceChange = price - previousData.ld;
 				const priceChangePercent = (priceChange / previousData.ld) * 100;
 
-				if (Math.abs(priceChangePercent) > 0.1) { // 价格变化超过0.1%
+				if (Math.abs(priceChangePercent) > 0.1) {
+					// 价格变化超过0.1%
 					this.logger.info('检测到显著价格变化', {
 						symbol,
 						previousPrice: previousData.ld,
 						currentPrice: price,
 						change: priceChange,
-						changePercent: priceChangePercent.toFixed(4)
+						changePercent: priceChangePercent.toFixed(4),
 					});
-					
+
 					this.emit('significantPriceChange', {
 						symbol,
 						previousPrice: previousData.ld,
 						currentPrice: price,
 						change: priceChange,
-						changePercent: priceChangePercent
+						changePercent: priceChangePercent,
 					});
 				}
 			}
@@ -378,11 +398,9 @@ export class ItickService extends EventEmitter {
 			symbol,
 			price,
 			volume,
-			timestamp: new Date(timestamp)
+			timestamp: new Date(timestamp),
 		});
 	}
-
-
 
 	/**
 	 * 清空报价数据缓冲区
